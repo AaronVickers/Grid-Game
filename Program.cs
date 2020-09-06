@@ -1,112 +1,84 @@
 ﻿using System;
 
 namespace GridGame {
-    class Program {
 
-        static void Main(string[] args) {
-            int gridMin = 3;
-            int gridMax = 10;
+    public class Program {
 
-            int gridSize;
+        private static int gridMin = 3;
+        private static int gridMax = 10;
 
-            while (true) {
-                Console.WriteLine("What size should the grid be? (3-10)");
+        public static int GetIntInput(string message) {
+            bool valid;
+            int intRes;
 
-                string gridInput = Console.ReadLine();
+            do {
+                Console.WriteLine(message);
 
-                try {
-                    // Convert grid input to integer
-                    gridSize = Convert.ToInt32(gridInput);
+                string input = Console.ReadLine();
+                valid = int.TryParse(input, out intRes);
 
-                    // Exit loop if in bounds
-                    if (gridSize >= gridMin && gridSize <= gridMax) {
-                        break;
-                    } else {
-                        Console.WriteLine("Grid size must be in the range 3 to 10.");
-                    }
-                } catch {
-                    Console.WriteLine("Grid size must be an integer.");
+                if (!valid) {
+                    Console.WriteLine("Input must be an integer.");
                 }
-            }
+            } while (!valid);
 
-            Random rand = new Random();
-            int randX = rand.Next(0, gridSize); // min inclusive, max exclusive
-            int randY = rand.Next(0, gridSize);
-            int randZ = rand.Next(0, gridSize);
-
-            int guesses = 0;
-
-            while (true) {
-                Console.Write("Enter X co-ordinate: ");
-                string xInput = Console.ReadLine();
-
-                Console.Write("Enter Y co-ordinate: ");
-                string yInput = Console.ReadLine();
-
-                Console.Write("Enter Z co-ordinate: ");
-                string zInput = Console.ReadLine();
-
-                try {
-                    // Convert guess to integers
-                    int xGuess = Convert.ToInt32(xInput);
-                    int yGuess = Convert.ToInt32(yInput);
-                    int zGuess = Convert.ToInt32(zInput);
-
-                    // Don't count guesses out of range
-                    if (xGuess < 0 || yGuess < 0 || zGuess < 0 || xGuess >= gridSize || yGuess >= gridSize || zGuess >= gridSize) {
-                        Console.WriteLine("Your guess was out of the grid's range.");
-
-                        continue;
-                    }
-
-                    guesses++; // Increase guess count AFTER validating input
-
-                    // Exit loop if correct
-                    if (xGuess == randX && yGuess == randY && zGuess == randZ) {
-                        break;
-                    }
-
-                    string responseString = "Your X is ";
-
-                    // X result
-                    if (xGuess == randX) {
-                        responseString += "correct";
-                    } else if (xGuess > randX) {
-                        responseString += "too high";
-                    } else {
-                        responseString += "too low";
-                    }
-
-                    responseString += ", your Y is ";
-
-                    // Y result
-                    if (yGuess == randY) {
-                        responseString += "correct";
-                    } else if (yGuess > randY) {
-                        responseString += "too high";
-                    } else {
-                        responseString += "too low";
-                    }
-
-                    responseString += ", your Z is ";
-
-                    // Z result
-                    if (zGuess == randZ) {
-                        responseString += "correct";
-                    } else if (zGuess > randZ) {
-                        responseString += "too high";
-                    } else {
-                        responseString += "too low";
-                    }
-
-                    Console.WriteLine(responseString+".");
-                } catch { // If guess is not of integer values
-                    Console.WriteLine("Co-ordinates must be integers.");
-                }
-            }
-
-            Console.WriteLine("You found the target at "+randX+", "+randY+", "+randZ+"!");
-            Console.WriteLine("It took you " + guesses + " guesses to find the target.");
+            return intRes;
         }
+
+        public static int GetIntInputInRange(string message, int min, int max) {
+            bool valid;
+            int intRes;
+
+            do {
+                intRes = GetIntInput(message);
+                valid = intRes >= min && intRes <= max;
+
+                if (!valid) {
+                    Console.WriteLine($"Input must be in the range from {min} to {max}.");
+                }
+            } while (!valid);
+
+            return intRes;
+        }
+
+        public static void Main() {
+            int gridSize = GetIntInputInRange("What size should the grid be?", gridMin, gridMax);
+
+            GameController gameController = new GameController(gridSize);
+
+            bool foundTarget = false;
+
+            do {
+                int guessX = GetIntInputInRange("Enter X co-ordinate guess:", 0, gridSize-1);
+                int guessY = GetIntInputInRange("Enter Y co-ordinate guess:", 0, gridSize-1);
+                int guessZ = GetIntInputInRange("Enter Z co-ordinate guess:", 0, gridSize-1);
+
+                Point3D guess = new Point3D(guessX, guessY, guessZ);
+                GuessResult guessRes = gameController.MakeGuess(guess);
+
+                if (guessRes == GuessResult.Hit) {
+                    foundTarget = true;
+                } else if (guessRes == GuessResult.Miss) {
+                    Point3D offset = gameController.GetGuessOffsetAsPoint(guess);
+
+                    string resX = offset.x == 0 ? "correct" : offset.x < 0 ? "too high" : $"too low";
+                    string resY = offset.y == 0 ? "correct" : offset.y < 0 ? "too high" : $"too low";
+                    string resZ = offset.z == 0 ? "correct" : offset.z < 0 ? "too high" : $"too low";
+
+                    Console.WriteLine("Your guess missed the target.");
+                    Console.WriteLine($"Your X is {resX}, your Y is {resY} and your Z is {resZ}.");
+
+                    gameController.MoveTarget();
+                } else if (guessRes == GuessResult.OutOfRange) {
+                    Console.WriteLine("Your guess was out of the grid's range.");
+                }
+            } while (!foundTarget);
+
+            int totalGuesses = gameController.guesses;
+
+            Console.WriteLine($"You found the target after {totalGuesses} guesses!");
+        }
+
     }
+
 }
